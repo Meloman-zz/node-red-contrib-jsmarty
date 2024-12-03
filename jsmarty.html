@@ -1,0 +1,102 @@
+<script type="text/html" data-template-name="jsmarty">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name of the node">
+    </div>
+    <div class="form-row">
+        <label for="node-input-templateCode"><i class="icon-code"></i> Template Code</label>
+        <div id="editor-container" style="border: 1px solid #ccc; height: 200px;"></div>
+    </div>
+    <div class="form-row">
+        <label for="node-input-basePath"><i class="icon-folder"></i> Base Path for .tpl Files</label>
+        <input type="text" id="node-input-basePath" placeholder="Enter the base directory for .tpl files">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="jsmarty">
+    <p>
+        Le noeud <b>JSmarty</b> permet de traiter des templates en utilisant le moteur de templates JSmarty.
+    </p>
+    <p>
+        <b>Options de configuration :</b>
+        <ul>
+            <li><b>Nom :</b> Un nom facultatif pour identifier le nœud.</li>
+            <li><b>Code du Template :</b> Rédigez ou collez directement votre code de template Smarty ici.</li>
+            <li><b>Chemin de base pour les fichiers .tpl :</b> Définissez un répertoire de base pour charger dynamiquement des fichiers <code>.tpl</code>. Vous pouvez spécifier ces fichiers en utilisant <code>msg.template</code>.</li>
+        </ul>
+    </p>
+    <p>
+        <b>Priorité d’utilisation :</b>
+        <ul>
+            <li>Si un template est fourni dans <code>msg.payload</code>, il sera utilisé en priorité.</li>
+            <li>Si <code>msg.template</code> est spécifié, le nœud chargera le fichier template depuis le chemin de base.</li>
+            <li>Si aucun des deux n’est fourni, le template défini dans la configuration de l’éditeur sera utilisé.</li>
+        </ul>
+    </p>
+    <p>
+        Les données nécessaires au rendu du template sont transmises via l’objet complet <code>msg</code>, ce qui permet d'accéder directement à toutes ses propriétés dans le template.
+    </p>
+</script>
+
+
+
+<script type="text/javascript">
+    (function () {
+        // Définir le mode Smarty
+        CodeMirror.defineMode("smarty", function (config, parserConfig) {
+            return {
+                token: function (stream) {
+                    if (stream.match("{") && stream.match(/[^}]*}/, false)) {
+                        stream.skipTo("}");
+                        stream.next();
+                        return "smarty";
+                    }
+                    stream.next();
+                    return null;
+                },
+                startState: function () {
+                    return {};
+                }
+            };
+        });
+
+        // Étendre le mode HTML pour supporter Smarty
+        CodeMirror.defineMIME("text/html+smarty", {
+            name: "htmlmixed",
+            scriptTypes: [{ matches: /\/x-smarty-template/, mode: "smarty" }]
+        });
+
+        let editor;
+
+        RED.nodes.registerType('jsmarty', {
+            category: 'function',
+            color: '#FFCC66',
+            defaults: {
+                name: { value: "" },
+                templateCode: { value: "" },
+                basePath: { value: "" }
+            },
+            inputs: 1,
+            outputs: 1,
+            icon: "file.png",
+            label: function () {
+                return this.name || "JSmarty Node";
+            },
+            oneditprepare: function () {
+                // Initialiser l'éditeur avec le mode personnalisé HTML + Smarty
+                editor = RED.editor.createEditor({
+                    id: "editor-container",
+                    mode: "text/html+smarty", // Utilise le mode étendu pour Smarty
+                    value: this.templateCode || ""
+                });
+            },
+            oneditsave: function () {
+                // Sauvegarder le contenu de l'éditeur dans le champ templateCode
+                this.templateCode = editor.getValue();
+            }
+        });
+
+    })();
+</script>
+
+
